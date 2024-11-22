@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="styles.css">
+    <script type="text/javascript" src="https://sgisapi.kostat.go.kr/OpenAPI3/auth/javascriptAuth?consumer_key=5b44d920dbab4a6daaef"></script>
+    <title>상 못 받으면 죽는 병 걸림</title>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDAR7XCV3jEEfdVzi97kSHSb6wg10R--_w"></script>
+    <style>
+        #map {
+            height: 400px;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="left">
+            <div class="top">
+                <h1 id="time-message">전쟁 관련 이슈</h1>
+                <div class="rounded-box"></div>
+                <div class="rounded-box"></div>
+                <div class="rounded-box"></div>
+            </div>
+            <div class="bottom">
+                <div id="output"></div> <!-- 기사 요약을 표시할 요소 추가 -->
+                <button id="prevButton" disabled>이전</button>
+                <button id="nextButton" disabled>다음</button>
+            </div>
+        </div>
+        <div class="right">
+            <input id="location" type="text" placeholder="장소를 입력하세요">
+            <button onclick="geocodeLocation()">검색</button>
+            <div id="map"></div>
+            
+        </div>
+    </div>
+
+    <script>
+        let map;
+        let marker; 
+        let infoWindow; 
+
+        function initMap() {
+            map = new google.maps.Map(document.getElementById("map"), {
+                center: { lat: -34.397, lng: 150.644 },
+                zoom: 8,
+            });
+            infoWindow = new google.maps.InfoWindow(); 
+        }
+
+        function geocodeLocation() {
+            const geocoder = new google.maps.Geocoder();
+            const address = document.getElementById("location").value;
+
+            geocoder.geocode({ address: address }, (results, status) => {
+                if (status === "OK") {
+                    map.setCenter(results[0].geometry.location);
+                    
+                    if (marker) {
+                        marker.setMap(null);
+                    }
+                    
+                    marker = new google.maps.Marker({
+                        map: map,
+                        position: results[0].geometry.location,
+                    });
+
+                    loadData(address); // 장소 검색 후 자동으로 요약 로드
+
+                } else {
+                    alert("장소를 찾을 수 없습니다: " + status);
+                }
+            });
+        }
+
+        let currentIndex = 0; 
+        let summaries = []; 
+
+        function loadData(location) {
+            const url = `https:/api-v2.deepsearch.com/v1/articles/politics,tech?keyword=title:(${location} and (전쟁 or 전투 or 위험))&api_key=32b1e1335fcb41599f2a0df4c4170bea`; 
+            fetch(url)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('네트워크 응답이 좋지 않습니다.');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    summaries = data.data.map(article => article.summary); 
+                    currentIndex = 0; 
+                    displaySummary(); 
+                    updateButtonState(); 
+                })
+                .catch(error => {
+                    console.error('문제가 발생했습니다:', error);
+                    document.getElementById('output').innerText = '데이터 로드 중 오류 발생';
+                });
+        }
+
+        function displaySummary() {
+            const output = document.getElementById('output');
+
+            // 요약을 출력 영역에 표시
+            if (currentIndex < summaries.length) {
+                const summary = summaries[currentIndex];
+                output.innerText = summary; // 기사 요약을 출력 영역에 표시
+            } else {
+                output.innerText = '더 이상 기사가 없습니다.'; 
+            }
+
+            updateButtonState(); 
+        }
+
+        function displayPreviousSummary() {
+            if (currentIndex > 0) {
+                currentIndex--; 
+                displaySummary(); 
+            }
+        }
+
+        function displayNextSummary() {
+            if (currentIndex < summaries.length - 1) {
+                currentIndex++; 
+                displaySummary(); 
+            }
+        }
+
+        function updateButtonState() {
+            const nextButton = document.getElementById('nextButton');
+            const prevButton = document.getElementById('prevButton');
+            nextButton.disabled = currentIndex >= summaries.length - 1; 
+            prevButton.disabled = currentIndex === 0; 
+        }
+
+        window.onload = function() {
+            initMap(); // 지도 초기화
+            document.getElementById('prevButton').onclick = displayPreviousSummary; // 이전 버튼 클릭 시 요약 출력
+            document.getElementById('nextButton').onclick = displayNextSummary; // 다음 버튼 클릭 시 요약 출력
+        };
+    </script>
+</body>
+</html>
