@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>기사 요약 불러오기</title>
+    <script>
+        let currentIndex = 0; // 현재 기사 인덱스
+        const pageSize = 3; // 한 번에 보여줄 기사 수
+        let summaries = []; // 기사 요약 저장 배열
+
+        function loadData() {
+            const categoryInput = document.getElementById('categoryInput').value; // 사용자 입력 카테고리
+            const url = `https://api-v2.deepsearch.com/v1/articles/economy,tech?keyword=title:(${categoryInput})&api_key=32b1e1335fcb41599f2a0df4c4170bea`; // 데이터를 가져올 URL
+            fetch(url)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('네트워크 응답이 좋지 않습니다.');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    summaries = data.data.map(article => article.summary); // 모든 기사의 요약 추출
+                    displaySummaries(); // 초기 요약 출력
+                    updateButtonState(); // 버튼 상태 업데이트
+                })
+                .catch(error => {
+                    console.error('문제가 발생했습니다:', error);
+                    document.getElementById('output').innerText = '데이터 로드 중 오류 발생';
+                });
+        }
+
+        function displaySummaries() {
+            const output = document.getElementById('output');
+            output.innerText = ''; // 출력 초기화
+            const endIndex = Math.min(currentIndex + pageSize, summaries.length); // 다음 기사 인덱스 계산
+
+            for (let i = currentIndex; i < endIndex; i++) {
+                output.innerText += summaries[i] + '\n\n'; // 요약 출력
+            }
+
+            currentIndex += pageSize; // 인덱스 업데이트
+            updateButtonState(); // 버튼 상태 업데이트
+        }
+
+        function displayPreviousSummaries() {
+            const output = document.getElementById('output');
+            output.innerText = ''; // 출력 초기화
+            currentIndex = Math.max(currentIndex - pageSize * 2, 0); // 이전 기사 인덱스 계산
+
+            const endIndex = Math.min(currentIndex + pageSize, summaries.length); // 다음 기사 인덱스 계산
+            for (let i = currentIndex; i < endIndex; i++) {
+                output.innerText += summaries[i] + '\n\n'; // 요약 출력
+            }
+
+            updateButtonState(); // 버튼 상태 업데이트
+        }
+
+        function updateButtonState() {
+            const nextButton = document.getElementById('nextButton');
+            const prevButton = document.getElementById('prevButton');
+            nextButton.disabled = currentIndex >= summaries.length; // 모든 기사를 다 본 경우 버튼 비활성화
+            prevButton.disabled = currentIndex === 0; // 첫 번째 기사인 경우 이전 버튼 비활성화
+        }
+
+        window.onload = function() {
+            document.getElementById('loadButton').onclick = loadData; // 버튼 클릭 시 데이터 불러오기
+        };
+    </script>
+</head>
+<body>
+    <h1>기사 요약 불러오기 예제</h1>
+    <input type="text" id="categoryInput" placeholder="검색어를 입력하세요" />
+    <button id="loadButton">검색</button><br>
+    <button id="prevButton" onclick="displayPreviousSummaries()">이전 기사 요약</button>
+    <button id="nextButton" onclick="displaySummaries()">다음 기사 요약</button>
+    <pre id="output"></pre>
+</body>
+</html>
